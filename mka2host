@@ -50,7 +50,7 @@ CGI
 our $dir = $config{vhostroot} . $host;
 
 sub prepare_cgi {
-    #mkdir($dir . "/cgi-bin/");
+    mkdir("$dir/cgi-bin/");
     $CGI =~ s/#DIR#/$dir/g;
 }
 sub prepare_php {
