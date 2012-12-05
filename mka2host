@@ -14,8 +14,8 @@ my %config = (
     admin => 'webmaster@domain.com'
 );
 
-$host  = $ARGV[0];
-$admin = $ARGV[1];
+our $host  = $ARGV[0];
+our $admin = $ARGV[1];
 
 our $template = <<STR;
 <VirtualHost #IP#:#PORT#>
@@ -85,7 +85,7 @@ sub mkvhost {
        $template =~ s/#CGI#/# The execution of CGI scripts has been disabled from this host/;
     }
     $template =~ s/#HOST#/$host/;
-    if (!($ADMIN)) {
+    if (!($admin)) {
         $template =~ s/#ADMIN#/$config{admin}/;
     } else {
         $template =~ s/#ADMIN#/$admin/;
