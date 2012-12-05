@@ -1,0 +1,99 @@
+#!/usr/bin/env perl
+
+# creates a new virtualhost in nginx on debian based linux systems. 
+
+my %config = (
+    vhostroot => '/srv/www/',
+    port => '80',
+    php_enabled => 0,
+    php_fcgid_host => 'localhost',
+    php_fcgid_port => '9000',
+    admin => 'webmaster@domain.com'
+);
+
+our $host  = $ARGV[0];
+# if the user is passed and exists, we shall make the user the owner of the directory (and use the user's group too.)
+our $user  = $ARGV[1];
+our $admin = $ARGV[2];
+
+our $template = <<STR;
+server {
+        listen #PORT#;
+        #listen [::]:#PORT#;
+        root #DIR#/htdocs;
+        server_name #HOST#;
+        #PHP#
+
+        # logging
+        error_log #DIR#/logs/error.log;
+        access_log #DIR#/logs/access.log;
+}
+STR
+
+our $PHP = <<PHP;
+index index.php index.html index.htm;
+location / {
+    try_files $uri $uri/ /index.php?$args;
+}
+
+location ~ \.php$ {
+    try_files $uri =404;
+    fastcgi_split_path_info ^(.+\.php)(/.+)$;
+    include fastcgi_params;
+    fastcgi_param  SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+    fastcgi_pass #PHPHOST#;
+    fastcgi_index index.php;
+}
+PHP
+our $htmlonly = <<HTML;
+        # The execution of PHP scripts has been disabled on this host
+        index index.html index.htm;
+HTML
+our $dir = $config{vhostroot} . $host;
+our @dirs;
+sub prepare_php {
+    my $prepared_host = $config{php_fcgid_host} . ":" . $config{php_fcgid_port};
+    $PHP =~ s/#PHPHOST#/$prepared_host/;
+}
+
+sub mkdirs {
+    foreach (@dirs) {
+        mkdir $_;
+    }
+    if (($user) and (!($user eq "nobody"))) {
+        my ($login,$pass,$uid,$gid) = getpwnam($user);
+        chown($uid,$gid,@dirs);
+    }
+}
+
+if (!($host)) {
+    print "mka2host host\nmka2host host nobody admin\@somewhere\nmka2host <host> <user> [admin]\n";
+    exit 1;
+}
+
+sub mkvhost {
+    @dirs = ($dir,"$dir/htdocs/","$dir/logs/");
+    $template =~ s/#IP#/$config{ip}/;
+    $template =~ s/#PORT#/$config{port}/;
+    $template =~ s/#DIR#/$dir/g;
+    if ($config{php_enabled} == 1) {
+        prepare_php();
+        $template =~ s/#PHP#/$PHP/;
+    } else {
+       $template =~ s/#PHP#/$htmlonly/;
+    }
+    $template =~ s/#HOST#/$host/;
+    if (!($admin)) {
+        $template =~ s/#ADMIN#/$config{admin}/;
+    } else {
+        $template =~ s/#ADMIN#/$admin/;
+    }
+    $template =~ s/#OVERRIDE#/$config{allowoverride}/;
+    mkdirs();
+    open OUT, ">/etc/nginx/sites-available/$host.conf" or die "failed at opening file";
+    print OUT $template;
+    close OUT;
+    symlink("/etc/nginx/sites-available/$host.conf","/etc/nginx/sites-enabled/$host.conf");
+    `service nginx reload`;
+}
+mkvhost();
