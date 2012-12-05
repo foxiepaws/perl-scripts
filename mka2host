@@ -15,7 +15,9 @@ my %config = (
 );
 
 our $host  = $ARGV[0];
-our $admin = $ARGV[1];
+# if the user is passed and exists, we shall make the user the owner of the directory (and use the user's group too.)
+our $user  = $ARGV[1];
+our $admin = $ARGV[2];
 
 our $template = <<STR;
 <VirtualHost #IP#:#PORT#>
@@ -48,9 +50,9 @@ ScriptAlias /cgi-bin/ #DIR#/cgi-bin/
 CGI
 
 our $dir = $config{vhostroot} . $host;
-
+our @dirs;
 sub prepare_cgi {
-    mkdir("$dir/cgi-bin/");
+    push(@dirs,"$dir/cgi-bin/");
     $CGI =~ s/#DIR#/$dir/g;
 }
 sub prepare_php {
@@ -61,15 +63,23 @@ sub prepare_php {
     $PHP =~ s/#PHPHOST#/$prepared_host/;
 }
 
+sub mkdirs {
+    foreach (@dirs) {
+        mkdir $_;
+    }
+    if (($user) and (!($user eq "nobody"))) {
+        my ($login,$pass,$uid,$gid) = getpwnam($user);
+        chown($uid,$gid,@dirs);
+    }
+}
+
 if (!($host)) {
-    print "mka2host host [admin]\n";
+    print "mka2host host\nmka2host host nobody admin\@somewhere\nmka2host <host> <user> [admin]\n";
     exit 1;
 }
 
 sub mkvhost {
-    mkdir $dir;
-    mkdir("$dir/htdocs/");
-    mkdir("$dir/logs/");
+    @dirs = ($dir,"$dir/htdocs/","$dir/logs/");
     $template =~ s/#IP#/$config{ip}/;
     $template =~ s/#PORT#/$config{port}/;
     $template =~ s/#DIR#/$dir/g;
@@ -91,7 +101,7 @@ sub mkvhost {
         $template =~ s/#ADMIN#/$admin/;
     }
     $template =~ s/#OVERRIDE#/$config{allowoverride}/;
-
+    mkdirs();
     open OUT, ">/etc/apache2/sites-available/$host.conf" or die "failed at opening file";
     print OUT $template;
     close OUT;
