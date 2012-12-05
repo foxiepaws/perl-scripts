@@ -1,0 +1,100 @@
+#!/usr/bin/env perl
+
+# creates a new virtualhost in apache on debian based linux systems. 
+
+my %config = (
+    vhostroot => '/srv/www/',
+    ip => '127.0.0.1',
+    port => '80',
+    cgi_enabled => 0,
+    php_enabled => 0,
+    php_fcgid_host => 'localhost',
+    php_fcgid_port => '9000',
+    allowoverride => 'None',
+    admin => 'webmaster@domain.com'
+);
+
+$host  = $ARGV[0];
+$admin = $ARGV[1];
+
+our $template = <<STR;
+<VirtualHost #IP#:#PORT#>
+    ServerAdmin #ADMIN#
+    ServerName #HOST#
+    ErrorLog #DIR#/logs/error.log
+    LogLevel warn
+    CustomLog #DIR#/logs/access.log combined
+    DocumentRoot #DIR#/htdocs/
+    <Directory #DIR#/htdocs>
+        Options Indexes FollowSymLinks MultiViews
+        AllowOverride #OVERRIDE#
+        Order allow,deny
+        allow from all
+    </Directory>
+    #CGI#
+    #PHP#
+</VirtualHost>
+STR
+
+our $PHP = "FastCgiExternalServer #DIR#/cgi-bin/php5.external -host #PHPHOST#";
+our $CGI =<<CGI;
+ScriptAlias /cgi-bin/ #DIR#/cgi-bin/
+        <Directory "#DIR#/cgi-bin/">
+                AllowOverride None
+                Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+                Order allow,deny
+                Allow from all
+        </Directory>
+CGI
+
+our $dir = $config{vhostroot} . $host;
+
+sub prepare_cgi {
+    #mkdir($dir . "/cgi-bin/");
+    $CGI =~ s/#DIR#/$dir/g;
+}
+sub prepare_php {
+    prepare_cgi();
+    $template =~ s/#CGI#/$CGI/; # CGI is required for PHP here.
+    my $prepared_host = $config{php_fcgid_host} . ":" . $config{php_fcgid_port};
+    $PHP =~ s/#DIR#/$dir/g;
+    $PHP =~ s/#PHPHOST#/$prepared_host/;
+}
+
+if (!($host)) {
+    print "newvhost host [admin]\n";
+    exit 1;
+}
+
+sub mkvhost {
+    mkdir $dir;
+    mkdir("$dir/htdocs/");
+    mkdir("$dir/logs/");
+    $template =~ s/#IP#/$config{ip}/;
+    $template =~ s/#PORT#/$config{port}/;
+    $template =~ s/#DIR#/$dir/g;
+    if ($config{php_enabled} == 1) {
+        prepare_php();
+        $template =~ s/#PHP#/$PHP/;
+    } elsif ($config{cgi_enabled} == 1 and $config{php_enabled} == 0) {
+       prepare_cgi();
+       $template =~ s/#PHP#/# The execution of PHP scripts has been disabled from this host/;
+       $template =~ s/#CGI#/$CGI/;
+    } else {
+       $template =~ s/#PHP#/# The execution of PHP scripts has been disabled from this host/;
+       $template =~ s/#CGI#/# The execution of CGI scripts has been disabled from this host/;
+    }
+    $template =~ s/#HOST#/$host/;
+    if (!($ADMIN)) {
+        $template =~ s/#ADMIN#/$config{admin}/;
+    } else {
+        $template =~ s/#ADMIN#/$admin/;
+    }
+    $template =~ s/#OVERRIDE#/$config{allowoverride}/;
+
+    open OUT, ">/etc/apache2/sites-available/$host.conf" or die "failed at opening file";
+    print $template;
+    symlink("/etc/apache2/sites-available/$host.conf","/etc/apache2/sites-enabled/$host.conf");
+    `service apache2 reload`;
+}
+mkvhost();
