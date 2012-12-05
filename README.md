@@ -30,6 +30,6 @@ way its configured to use this method if you wish.
 
 mknxhost
 --------
-    The same as above only written for nginx, the admin information isn't included on this one nor 
+The same as above only written for nginx, the admin information isn't included on this one nor 
 is CGI stuff due to how nginx is designed, there is however support for nginx's HttpFastcgiModule for
 PHP.
