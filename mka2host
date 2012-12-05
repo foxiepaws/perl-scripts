@@ -93,7 +93,8 @@ sub mkvhost {
     $template =~ s/#OVERRIDE#/$config{allowoverride}/;
 
     open OUT, ">/etc/apache2/sites-available/$host.conf" or die "failed at opening file";
-    print $template;
+    print OUT $template;
+    close OUT;
     symlink("/etc/apache2/sites-available/$host.conf","/etc/apache2/sites-enabled/$host.conf");
     `service apache2 reload`;
 }
