@@ -11,12 +11,12 @@ The PHP control on this uses mod\_actions and mod\_fastcgi by default. this is t
 way its configured to use this method if you wish.
 
 <pre>
-&lt;IfModule mod\_fastcgi.c&gt;
+&lt;IfModule mod_fastcgi.c&gt;
   AddHandler fastcgi-script .fcgi
   #FastCgiWrapper /usr/lib/apache2/suexec
   FastCgiIpcDir /var/lib/apache2/fastcgi
 &lt;/IfModule&gt;
-&lt;IfModule mod\_fastcgi.c&gt;
+&lt;IfModule mod_fastcgi.c&gt;
   AddHandler php5-fcgi .php
   Action php5-fcgi /cgi-bin/php5.external
   &lt;Location "/cgi-bin/php5.external"&gt;
