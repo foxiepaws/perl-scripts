@@ -62,7 +62,7 @@ sub prepare_php {
 }
 
 if (!($host)) {
-    print "newvhost host [admin]\n";
+    print "mka2host host [admin]\n";
     exit 1;
 }
 
