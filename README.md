@@ -3,7 +3,7 @@ perl-scripts
 
 mka2host
 --------
-    Allows the creation of Virtual Hosts in apache with one simple command, <code>mka2host &lt;host&gt;</code>
+Allows the creation of Virtual Hosts in apache with one simple command, <code>mka2host &lt;host&gt;</code>
 
 you can also pass it things like a user to own the directory and admin information. 
 
